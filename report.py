@@ -1,4 +1,5 @@
 import subprocess
+from argparse import ArgumentParser
 
 # SMART value status
 GOOD = 0
@@ -137,8 +138,9 @@ def format_val(name, val, color):
     colors = {GOOD:term_color_good, WARN:term_color_warning, BAD:term_color_bad}
     return colors[color] + term_val_border + name + ": " + val + term_val_border + term_color_default
 
-def print_smart_per_drive(smart, attribute_order = None, hdd_order = None):
+def print_smart_per_drive(smart, columns = 1, attribute_order = None, hdd_order = None):
     ''' smart = {"hdd_name":{smart values}, "hdd_name":{smart values}, ...}
+        columns = SMART attributes per line.
         attribute_order = Optional list of smart attribute ids.
         The smart values will be printed in this order.
         hdd_order = Optional list of hdd_names.
@@ -156,7 +158,6 @@ def print_smart_per_drive(smart, attribute_order = None, hdd_order = None):
         attribute_order = list(hd0)
         attribute_order.sort(key = sort_key)
 
-    values_per_line = 1
     for name in hdd_order:
         print(name)
         line = ""
@@ -165,7 +166,7 @@ def print_smart_per_drive(smart, attribute_order = None, hdd_order = None):
             attr = smart[name][val]
             line += format_val(attr["name"], attr["value"], attr["status"])
             count += 1
-            if count % values_per_line == 0 or count == len(attribute_order):
+            if count % columns == 0 or count == len(attribute_order):
                 print(line)
                 line = ""
             else:
@@ -175,8 +176,9 @@ def print_smart_per_drive(smart, attribute_order = None, hdd_order = None):
 
         print("")
 
-def print_smart_per_attribute(smart, attribute_order = None, hdd_order = None):
+def print_smart_per_attribute(smart, columns = 1, attribute_order = None, hdd_order = None):
     ''' smart = {"hdd_name":{smart values}, "hdd_name":{smart values}, ...}
+        columns = Drives per line.
         attribute_order = Optional list of smart attribute ids.
         The smart values will be printed in this order.
         hdd_order = Optional list of hdd_names.
@@ -194,7 +196,6 @@ def print_smart_per_attribute(smart, attribute_order = None, hdd_order = None):
         attribute_order = list(hd0)
         attribute_order.sort(key = sort_key)
 
-    values_per_line = 4
     for val in attribute_order:
         attr = hd0[val]
         print(attr["name"])
@@ -204,7 +205,7 @@ def print_smart_per_attribute(smart, attribute_order = None, hdd_order = None):
             attr = smart[name][val]
             line += format_val(name, attr["value"], attr["status"])
             count += 1
-            if count % values_per_line == 0 or count == len(attribute_order):
+            if count % columns == 0 or count == len(attribute_order):
                 print(line)
                 line = ""
             else:
@@ -214,7 +215,14 @@ def print_smart_per_attribute(smart, attribute_order = None, hdd_order = None):
 
         print("")
 
-drives =  ["/dev/ada" + str(x) for x in range(4)]
+parser = ArgumentParser(description="Check drives' SMART attributes against \"warning\" and \"bad\" thresholds. "
+                                    "Output color coded in green, yellow or red representing a good / warning / bad value.")
+parser.add_argument("disks", metavar="disk", type=str, nargs="+", help="Disks to check")
+parser.add_argument("-d", "--perdrive", action="store_true", dest="perdrive",
+                    help="Group output per drive instead of per SMART attribute")
+parser.add_argument("-c", "--columns", metavar="N", type=int, default=1, help="Output column count (default 1)")
+opts = parser.parse_args()
+
 limits = {4:[1000, 2000],
           5:[0, 5],
           9:[20000, 40000],
@@ -224,8 +232,10 @@ limits = {4:[1000, 2000],
           198:[0,3]
 }
 smart = {}
-for dev in drives:
+for dev in opts.disks:
     smart[dev] = check_drive(dev, limits)
 
-#print_smart_per_drive(smart)
-print_smart_per_attribute(smart)
+if opts.perdrive:
+    print_smart_per_drive(smart, opts.columns)
+else:
+    print_smart_per_attribute(smart, opts.columns)

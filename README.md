@@ -24,5 +24,8 @@ Configured SMART attributes and thresholds:
 | 197 | Current Pending Sector   | 0       | 3     |
 | 198 | Offline Uncorrectable    | 0       | 3     |
 
-Currently this script will check `/dev/ada0` through `/dev/ada3`.  
-Usage: `python3 report.py`
+Usage: `python3 report.py /dev/sda /dev/sdb ...`  
+Options:  
+- `--help` display the help.  
+- `-c or --columns` change the output column count (default 1).  
+- `-d or --perdrive` group output per drive instead of per SMART attribute.
