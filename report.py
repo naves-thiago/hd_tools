@@ -69,7 +69,7 @@ def read_smart(dev):
 def split_smart_line(line):
     out = {}
     out["id"]          = int(line[positions[0]:positions[1]].strip())
-    out["name"]        = line[positions[1]:positions[2]].strip()
+    out["name"]        = line[positions[1]:positions[2]].strip().replace('_', ' ')
     out["flag"]        = line[positions[2]:positions[3]].strip()
     out["value"]       = line[positions[3]:positions[4]].strip()
     out["worst"]       = line[positions[4]:positions[5]].strip()
