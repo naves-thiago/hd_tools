@@ -2,9 +2,10 @@ import subprocess
 from argparse import ArgumentParser
 
 # SMART value status
-GOOD = 0
-WARN = 1
-BAD  = 2
+GOOD    = 0
+WARN    = 1
+BAD     = 2
+UNKNOWN = 3
 positions = []
 
 def read_smart(dev):
@@ -127,6 +128,7 @@ term_val_border    = "  "
 term_color_bad     = "\x1b[30m" + "\x1b[41m"
 term_color_warning = "\x1b[30m" + "\x1b[43m"
 term_color_good    = "\x1b[30m" + "\x1b[42m"
+term_color_unknown = "\x1b[30m" + "\x1b[44m"
 term_color_default = "\x1b(B\x1b[m"
 
 #term_color_bad     = tput("setaf", "0") + tput("setab", "1") # Black on Red
@@ -135,7 +137,8 @@ term_color_default = "\x1b(B\x1b[m"
 #term_color_default = tput("sgr0")                            # Default colors
 
 def format_val(name, val, color):
-    colors = {GOOD:term_color_good, WARN:term_color_warning, BAD:term_color_bad}
+    colors = {GOOD:term_color_good, WARN:term_color_warning, BAD:term_color_bad,
+              UNKNOWN:term_color_unknown}
     return colors[color] + term_val_border + name + ": " + val + term_val_border + term_color_default
 
 def print_smart_per_drive(smart, columns = 1, attribute_order = None, hdd_order = None):
@@ -202,8 +205,12 @@ def print_smart_per_attribute(smart, columns = 1, attribute_order = None, hdd_or
         line = ""
         count = 0
         for name in hdd_order:
-            attr = smart[name][val]
-            line += format_val(name, attr["value"], attr["status"])
+            attr = smart[name].get(val)
+            if attr:
+                line += format_val(name, attr["value"], attr["status"])
+            else:
+                line += format_val(name, "???", UNKNOWN)
+
             count += 1
             if count % columns == 0 or count == len(attribute_order):
                 print(line)
@@ -227,7 +234,7 @@ limits = {4:[1000, 2000],
           5:[0, 5],
           9:[20000, 40000],
           187:[0,5],
-          190:[35, 41],
+          194:[35, 41],
           197:[0,3],
           198:[0,3]
 }
