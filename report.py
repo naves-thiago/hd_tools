@@ -1,6 +1,6 @@
 import subprocess
 from argparse import ArgumentParser
-from modules.smart import read_smart
+from modules.smart import read_smart, attribute_name
 
 # SMART value status
 GOOD    = 0
@@ -22,9 +22,10 @@ def check_drive(dev, raw_limits):
     smart = read_smart(dev)
 
     for attr in raw_limits:
+        out[attr] = {'name':attribute_name.get(attr, '???')}
         if attr in smart:
             raw = int(smart[attr]['raw'])
-            out[attr] = {'name':smart[attr]['name'], 'value':smart[attr]['raw']}
+            out[attr]['value'] = smart[attr]['raw']
             if smart[attr]['when_failed'] != '-':
                 # Drive reported failure
                 out[attr]['status'] = BAD
@@ -36,8 +37,6 @@ def check_drive(dev, raw_limits):
                 out[attr]['status'] = WARN
             else:
                 out[attr]['status'] = GOOD
-        else:
-            out[attr] = {}
 
     return out
 
@@ -93,7 +92,10 @@ def print_smart_per_drive(smart, columns = 1, attribute_order = None, hdd_order 
         count = 0
         for val in attribute_order:
             attr = smart[name][val]
-            line += format_val(attr['name'], attr['value'], attr['status'])
+            if attr.get('value'):
+                line += format_val(attr['name'], attr['value'], attr['status'])
+            else:
+                line += format_val(attr['name'], '???', UNKNOWN)
             count += 1
             if count % columns == 0 or count == len(attribute_order):
                 print(line)
@@ -132,7 +134,7 @@ def print_smart_per_attribute(smart, columns = 1, attribute_order = None, hdd_or
         count = 0
         for name in hdd_order:
             attr = smart[name].get(val)
-            if attr:
+            if attr.get('value'):
                 line += format_val(name, attr['value'], attr['status'])
             else:
                 line += format_val(name, '???', UNKNOWN)
