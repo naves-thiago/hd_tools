@@ -40,11 +40,6 @@ def check_drive(dev, raw_limits):
 
     return out
 
-def tput(*params):
-    tmp = ['tput']
-    tmp.extend(params)
-    return subprocess.Popen(tmp, stdout=subprocess.PIPE).stdout.read().decode('utf-8')
-
 term_val_spacing   = '    '
 term_val_border    = '  '
 
@@ -54,12 +49,6 @@ term_color_warning = '\x1b[30m' + '\x1b[43m'
 term_color_good    = '\x1b[30m' + '\x1b[42m'
 term_color_unknown = '\x1b[30m' + '\x1b[44m'
 term_color_default = '\x1b(B\x1b[m'
-
-#term_color_bad     = tput('setaf', '0') + tput('setab', '1') # Black on Red
-#term_color_warning = tput('setaf', '0') + tput('setab', '3') # Black on Yellow
-#term_color_good    = tput('setaf', '0') + tput('setab', '2') # Black on Green
-#term_color_unknown = tput('setaf', '0') + tput('setab', '4') # Black on Green
-#term_color_default = tput('sgr0')                            # Default colors
 
 def format_val(name, val, color):
     colors = {GOOD:term_color_good, WARN:term_color_warning, BAD:term_color_bad,
