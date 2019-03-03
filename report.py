@@ -41,7 +41,6 @@ def check_drive(dev, raw_limits):
     return out
 
 term_val_spacing   = '    '
-term_val_border    = '  '
 
 # Hardcoded values because I can't get tput to work properly in FreeNAS
 term_color_bad     = '\x1b[30m' + '\x1b[41m'
@@ -49,11 +48,41 @@ term_color_warning = '\x1b[30m' + '\x1b[43m'
 term_color_good    = '\x1b[30m' + '\x1b[42m'
 term_color_unknown = '\x1b[30m' + '\x1b[44m'
 term_color_default = '\x1b(B\x1b[m'
+colors = {GOOD:term_color_good, WARN:term_color_warning, BAD:term_color_bad,
+          UNKNOWN:term_color_unknown}
 
-def format_val(name, val, color):
-    colors = {GOOD:term_color_good, WARN:term_color_warning, BAD:term_color_bad,
-              UNKNOWN:term_color_unknown}
-    return colors[color] + term_val_border + name + ': ' + val + term_val_border + term_color_default
+class column_maker:
+    ' Generate the required paddings (spaces) for printing data aligned in n columns. '
+    def __init__(self, columns, align_right = False):
+        self._columns = columns
+        self._strings = []
+        self._max_len = []
+        self._align_right = align_right
+        for x in range(columns):
+            self._max_len.append(0)
+
+    def strings(self):
+        return self._strings
+
+    def append(self, s):
+        index = len(self._strings) % self._columns
+        self._strings.append(s)
+        self._max_len[index] = max(self._max_len[index], len(s))
+
+    def __len__(self):
+        return len(self._strings)
+
+    def __getitem__(self, index):
+        s = self._strings[index]
+        if self._align_right:
+            return ' ' * (self._max_len[index % self._columns] - len(s)) + s
+        else:
+            return s + ' ' * (self._max_len[index % self._columns] - len(s))
+
+    def __iter__(self):
+        for i in range(len(self._strings)):
+            yield self.__getitem__(i)
+
 
 def print_smart_per_drive(smart, columns = 1, attribute_order = None, hdd_order = None):
     ''' smart = {'hdd_name':{smart values}, 'hdd_name':{smart values}, ...}
@@ -64,7 +93,7 @@ def print_smart_per_drive(smart, columns = 1, attribute_order = None, hdd_order 
         The drives will be printed in this order'''
 
     if not hdd_order:
-        hdd_order = list(smart.keys())
+        hdd_order = list(smart)
         hdd_order.sort()
 
     if not attribute_order:
@@ -77,20 +106,24 @@ def print_smart_per_drive(smart, columns = 1, attribute_order = None, hdd_order 
 
     for name in hdd_order:
         print(name)
-        line = ''
-        count = 0
-        for val in attribute_order:
+        out = column_maker(columns)
+        for i in range(len(attribute_order)):
+            val = attribute_order[i]
             attr = smart[name][val]
             if attr.get('value'):
-                line += format_val(attr['name'], attr['value'], attr['status'])
+                out.append(colors[attr['status']] + attr['name'] + ': ' + attr['value'])
             else:
-                line += format_val(attr['name'], '???', UNKNOWN)
+                out.append(colors[UNKNOWN] + attr['name'] + '???')
+
+        line = ''
+        count = 0
+        for i in range(len(out)):
+            line += out[i] + term_color_default + term_val_spacing
             count += 1
-            if count % columns == 0 or count == len(attribute_order):
+            if count % columns == 0:
                 print(line)
                 line = ''
-            else:
-                line += term_val_spacing
+
         if line != '':
             print(line)
 
@@ -105,7 +138,7 @@ def print_smart_per_attribute(smart, columns = 1, attribute_order = None, hdd_or
         The drives will be printed in this order'''
 
     if not hdd_order:
-        hdd_order = list(smart.keys())
+        hdd_order = list(smart)
         hdd_order.sort()
 
     hd0 = smart[next(iter(smart))]
@@ -119,21 +152,27 @@ def print_smart_per_attribute(smart, columns = 1, attribute_order = None, hdd_or
     for val in attribute_order:
         attr = hd0[val]
         print(attr['name'])
-        line = ''
-        count = 0
+        out_attr = column_maker(columns)
+        out_val  = column_maker(columns, True)
+
         for name in hdd_order:
             attr = smart[name].get(val)
             if attr.get('value'):
-                line += format_val(name, attr['value'], attr['status'])
+                out_attr.append(colors[attr['status']] + name)
+                out_val.append(attr['value'])
             else:
-                line += format_val(name, '???', UNKNOWN)
+                out_attr.append(colors[UNKNOWN] + name)
+                out_val.append('???')
 
+        line = ''
+        count = 0
+        for i in range(len(out_attr)):
+            line += out_attr[i] + ': ' + out_val[i] + term_color_default + term_val_spacing
             count += 1
-            if count % columns == 0 or count == len(attribute_order):
+            if count % columns == 0:
                 print(line)
                 line = ''
-            else:
-                line += term_val_spacing
+
         if line != '':
             print(line)
 
